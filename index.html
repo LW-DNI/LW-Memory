@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Lampenwelt Memory-Spiel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/logo_icon.png">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #fff;
+    }
+
+    header {
+      background-color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .logo {
+      max-width: 120px;
+      height: auto;
+      margin: 0 auto 10px;
+      display: block;
+    }
+
+    h1, h2 {
+      color: #da344e;
+      margin: 10px 0;
+    }
+
+    .memory-container {
+      max-width: 700px;
+      margin: 10px auto;
+      padding: 50px;
+      background-color: rgba(255,255,255,0.9);
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 600px) {
+      .memory-container {
+        padding: 20px;
+        margin: 20px;
+      }
+    }
+
+    .memory-game {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* Mobil: 2x4 */
+      grid-gap: 10px;
+      justify-content: center;
+    }
+
+    .card {
+      background-color: #da344e;
+      color: white;
+      font-size: 14px;
+      padding: 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .card {
+        height: 70px;
+      }
+    }
+
+    .card.flipped {
+      background-color: #fff;
+      color: #da344e;
+      border: 2px solid #da344e;
+    }
+
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+
+    .header-graphic {
+      display: block;
+      max-width: 20%;
+      height: auto;
+      margin: 10px auto 0;
+    }
+
+    @media (max-width: 600px) {
+      .header-graphic {
+        max-width: 100%;
+      }
+    }
+
+    @media (min-width: 600px) {
+      .memory-game {
+        grid-template-columns: repeat(4, 1fr); /* Desktop: 4x2 */
+      }
+    }
+
+    .memory-container {
+      position: relative; 
+    }
+
+    .foreground-wrapper {
+      position: absolute;
+      top: -38%;
+      left: 77%;
+      z-index: 2;
+      pointer-events: none;
+      width: 35%;
+    }
+
+    /* Mobilanpassung */
+    @media (max-width: 600px) {
+      .foreground-wrapper {
+        top: -12%;    
+        left: 70%;   
+        width: 30%;
+      }
+    }
+
+    .foreground-overlay {
+      max-width: 80%;
+      opacity: 0.9; 
+    }
+
+
+
+  </style>
+</head>
+<body>
+  <header>
+    <!-- Logo oben -->
+    <img src="logo_icon.png" alt="Lampenwelt Logo" class="logo">
+    <h1>Lampenwelt Memory-Spiel</h1>
+    <h2>Schaffst du es in unter 8 Zügen?</h2>
+  <p> Finde zu jedem Beruf die passsende Tätigkeit </p>
+
+  <div class="memory-container">
+    <div class="foreground-wrapper">
+      <img src="lightbulb_off.png" alt="Glühbirne" class="foreground-overlay" id="foreground-image">
+    </div>
+    <div class="memory-game" id="game-board"></div>
+    <div class="info">
+      <p>Züge: <span id="move-counter">0</span></p>
+      <p id="reward-message" style="color: green; font-weight: bold;"></p>
+    </div>
+  </div>
+
+  <img src="header_graphic.png" alt="Lampenwelt Grafik" class="header-graphic">
+
+  <script>
+    const pairs = [
+      ["Erlernen, wie man Produkte online vermarktet", "Kaufmann/-frau im E-Commerce"],
+      ["Erlernen, wie man Büroabläufe koordiniert", "Kaufmann/-frau für Büromanagement"],
+      ["Erlernen von Kundenberatung und -betreuung", "Kaufmann/-frau für Dialogmarketing"],
+      ["Erlernen, wie man Waren richtig einlagert", "Fachkraft für Lagerlogistik"]
+    ];
+
+    let cards = [];
+    pairs.forEach(pair => cards.push(...pair));
+    cards = cards.sort(() => 0.5 - Math.random());
+
+    const gameBoard = document.getElementById("game-board");
+    const moveCounter = document.getElementById("move-counter");
+    const rewardMessage = document.getElementById("reward-message");
+
+    let flippedCards = [];
+    let matchedCards = 0;
+    let moves = 0;
+
+    function createBoard() {
+      gameBoard.innerHTML = "";
+      cards.forEach(text => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+
+        const placeholder = document.createElement("span");
+        placeholder.classList.add("placeholder");
+        placeholder.textContent = "?";
+        card.appendChild(placeholder);
+
+        card.dataset.text = text;
+        card.addEventListener("click", flipCard);
+        gameBoard.appendChild(card);
+      });
+    }
+
+    function flipCard() {
+      if (flippedCards.length === 2 || this.classList.contains("flipped")) return;
+
+      this.classList.add("flipped");
+      this.textContent = this.dataset.text;
+      flippedCards.push(this);
+
+      if (flippedCards.length === 2) {
+        moves++;
+        moveCounter.textContent = moves;
+        const [card1, card2] = flippedCards;
+        const isMatch = checkMatch(card1.dataset.text, card2.dataset.text);
+        if (isMatch) {
+          matchedCards += 2;
+          flippedCards = [];
+          if (matchedCards === cards.length) {
+            document.getElementById("foreground-image").src = "lightbulb_on.png";
+            if (moves <= 8) {
+              rewardMessage.textContent = "Super! Du hast weniger als 8 Züge gebraucht – hol dir deinen kleinen Preis bei uns ab!";
+            } else {
+              rewardMessage.textContent = "Super, du hast alle Paare gefunden! Schau doch bei uns vorbei, plaudere mit uns und mach ein Polaroid-Foto!";
+            }
+          }
+        } else {
+          setTimeout(() => {
+            card1.classList.remove("flipped");
+            card2.classList.remove("flipped");
+            card1.textContent = "?";
+            card2.textContent = "?";
+            flippedCards = [];
+          }, 1000);
+        }
+      }
+    }
+
+    function checkMatch(text1, text2) {
+      return pairs.some(pair =>
+        (pair[0] === text1 && pair[1] === text2) ||
+        (pair[1] === text1 && pair[0] === text2)
+      );
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
